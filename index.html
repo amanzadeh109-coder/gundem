@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#B3283B">
+<meta name="description" content="Gündəlik işlər, tədbirlər və son tarixlər üçün şəxsi təqvim.">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Gündəm">
+<title>Gündəm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: two-pane planner — month grid on the left, the chosen day's agenda + upcoming on the right; stacks on phones. */
+:root{
+  --bg:#ECEFF3; --surface:#FFFFFF; --sunk:#F5F7FA; --ink:#141C29; --muted:#5A6577; --line:#D6DCE4;
+  --accent:#B3283B; --accent-ink:#FFFFFF; --accent-soft:#F7E3E6;
+  --task:#34458A; --task-soft:#E3E7F5; --event:#1D7369; --event-soft:#DDF0ED; --dead:#B3283B; --dead-soft:#F7E3E6;
+  --warn:#9A5B00; --warn-soft:#FBEFD9;
+  --shadow:0 1px 2px rgba(20,28,41,.06),0 8px 24px rgba(20,28,41,.06);
+  --f-display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:14px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0E131A; --surface:#171E28; --sunk:#121821; --ink:#E7ECF3; --muted:#94A0B2; --line:#283241;
+  --accent:#E9576B; --accent-ink:#1A0B0E; --accent-soft:#3A1C22;
+  --task:#93A2E6; --task-soft:#232B47; --event:#5BC2B5; --event-soft:#15312E; --dead:#E9576B; --dead-soft:#3A1C22;
+  --warn:#E8B04F; --warn-soft:#3A2D14;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E131A; --surface:#171E28; --sunk:#121821; --ink:#E7ECF3; --muted:#94A0B2; --line:#283241;
+  --accent:#E9576B; --accent-ink:#1A0B0E; --accent-soft:#3A1C22;
+  --task:#93A2E6; --task-soft:#232B47; --event:#5BC2B5; --event-soft:#15312E; --dead:#E9576B; --dead-soft:#3A1C22;
+  --warn:#E8B04F; --warn-soft:#3A2D14;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25); color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;display:flex;flex-direction:column;gap:22px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* header */
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
+.brand{display:flex;flex-direction:column;gap:2px;min-width:0}
+.brand small{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.brand h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(26px,4vw,38px);line-height:1.05;letter-spacing:-.01em;text-wrap:balance}
+.brand h1 span{color:var(--accent)}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:9px 16px;font-weight:500;font-size:14px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.ghost{background:transparent}
+.btn[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.btn svg{width:16px;height:16px;flex:none}
+
+/* summary */
+.summary{display:flex;flex-wrap:wrap;gap:10px}
+.stat{display:flex;align-items:baseline;gap:8px;padding:10px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-size:13px;color:var(--muted)}
+.stat b{font-family:var(--f-mono);font-size:18px;color:var(--ink);font-variant-numeric:tabular-nums}
+.stat.alert{background:var(--warn-soft);border-color:transparent;color:var(--warn)}
+.stat.alert b{color:var(--warn)}
+
+.notice{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-radius:var(--r);border:1px dashed var(--line);background:var(--sunk);color:var(--muted);font-size:14px}
+
+/* main grid */
+.grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);min-width:0}
+
+/* calendar */
+.cal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px 10px}
+.cal-head h2{margin:0;font-family:var(--f-display);font-weight:500;font-size:20px}
+.cal-head h2 em{font-style:normal;color:var(--muted)}
+.nav{display:flex;gap:6px}
+.icon-btn{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center}
+.icon-btn:hover{border-color:var(--muted)}
+.icon-btn svg{width:16px;height:16px}
+.today-link{font-size:13px;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:0 12px;height:36px}
+.dow,.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.dow{padding:0 10px;border-bottom:1px solid var(--line)}
+.dow span{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:8px 6px}
+.dow span:nth-child(n+6){color:var(--accent)}
+.days{padding:8px 10px 12px;gap:4px}
+.day{position:relative;min-height:84px;border-radius:10px;border:1px solid transparent;background:transparent;text-align:left;padding:6px 7px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.day:hover{background:var(--sunk)}
+.day.out{opacity:.38}
+.day.sel{border-color:var(--ink);background:var(--sunk)}
+.day .n{font-family:var(--f-mono);font-size:13px;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;font-variant-numeric:tabular-nums}
+.day.today .n{background:var(--accent);color:var(--accent-ink)}
+.chips{display:flex;flex-direction:column;gap:2px;min-width:0}
+.chip{font-size:11px;line-height:1.35;padding:1px 6px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.chip.task{background:var(--task-soft);color:var(--task)}
+.chip.event{background:var(--event-soft);color:var(--event)}
+.chip.deadline{background:var(--dead-soft);color:var(--dead)}
+.chip.done{text-decoration:line-through;opacity:.55}
+.more{font-size:11px;color:var(--muted);padding-left:4px}
+.dots{display:none;gap:3px}
+.dots i{width:6px;height:6px;border-radius:50%}
+@media (max-width:560px){.day{min-height:54px;align-items:center;padding:5px 2px}.chips{display:none}.dots{display:flex}}
+.dots i.task{background:var(--task)}.dots i.event{background:var(--event)}.dots i.deadline{background:var(--dead)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;padding:0 18px 16px;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:9px;height:9px;border-radius:3px}
+
+/* agenda */
+.side{display:flex;flex-direction:column;gap:22px;min-width:0}
+.sec{padding:18px}
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px}
+.sec-head h3{margin:0;font-family:var(--f-display);font-weight:500;font-size:17px;text-wrap:balance}
+.sec-head .sub{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.list{display:flex;flex-direction:column;gap:8px;list-style:none;margin:0;padding:0}
+.item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:start;padding:10px 12px;border-radius:12px;background:var(--sunk);border-left:3px solid var(--line)}
+.item.task{border-left-color:var(--task)}.item.event{border-left-color:var(--event)}.item.deadline{border-left-color:var(--dead)}
+.check{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--muted);background:var(--surface);display:grid;place-items:center;margin-top:1px;padding:0}
+.check svg{width:14px;height:14px;opacity:0}
+.item.is-done .check{background:var(--ink);border-color:var(--ink)}
+.item.is-done .check svg{opacity:1;color:var(--surface)}
+.item.is-done .ttl{text-decoration:line-through;color:var(--muted)}
+.body{min-width:0;cursor:pointer}
+.ttl{font-weight:500;overflow-wrap:anywhere}
+.meta{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;color:var(--muted);margin-top:2px}
+.meta .t{font-family:var(--f-mono);color:var(--ink)}
+.tag{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;padding:1px 6px;border-radius:4px}
+.tag.task{background:var(--task-soft);color:var(--task)}.tag.event{background:var(--event-soft);color:var(--event)}.tag.deadline{background:var(--dead-soft);color:var(--dead)}
+.tag.sample{background:var(--warn-soft);color:var(--warn)}
+.when{font-family:var(--f-mono);font-size:12px;color:var(--muted);white-space:nowrap;text-align:right}
+.when.late{color:var(--warn)}
+.empty{padding:18px 12px;text-align:center;color:var(--muted);font-size:14px;border:1px dashed var(--line);border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.group-label{font-size:12px;font-weight:600;color:var(--muted);margin:10px 2px 2px}
+.group-label:first-child{margin-top:0}
+
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(10,14,20,.45);display:grid;place-items:center;padding:16px;z-index:20}
+.modal{width:min(520px,100%);max-height:calc(100% - 16px);overflow:auto;background:var(--surface);border-radius:18px;border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.25);padding:22px;display:flex;flex-direction:column;gap:14px}
+.modal h2{margin:0;font-family:var(--f-display);font-weight:500;font-size:20px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label,.field .lbl{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);background:var(--sunk);border-radius:10px;padding:10px 12px;min-width:0}
+.field textarea{resize:vertical;min-height:70px}
+.row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:440px){.row{grid-template-columns:minmax(0,1fr)}}
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label{border:1px solid var(--line);border-radius:10px;padding:9px 6px;text-align:center;font-size:13px;font-weight:500;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--ink);background:var(--sunk)}
+.seg input:checked+label{border-color:currentColor}
+.seg input[value="task"]:checked+label{color:var(--task);background:var(--task-soft)}
+.seg input[value="event"]:checked+label{color:var(--event);background:var(--event-soft)}
+.seg input[value="deadline"]:checked+label{color:var(--dead);background:var(--dead-soft)}
+.seg input:focus-visible+label{outline:2px solid var(--accent);outline-offset:2px}
+.modal-foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin-top:4px}
+.modal-foot .r{display:flex;gap:8px;margin-left:auto}
+.btn.danger{color:var(--dead);border-color:var(--dead-soft)}
+.btn.danger.armed{background:var(--dead);color:var(--surface);border-color:var(--dead)}
+.err{color:var(--dead);font-size:13px;min-height:1em}
+
+/* reminders */
+.toasts{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px;z-index:30;width:min(360px,calc(100% - 32px))}
+.toast{background:var(--ink);color:var(--surface);border-radius:14px;padding:14px 16px;box-shadow:0 12px 40px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:8px;animation:pop .25s ease-out}
+.toast .k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;opacity:.7}
+.toast .h{font-weight:600;font-size:15px;overflow-wrap:anywhere}
+.toast .w{font-family:var(--f-mono);font-size:12px;opacity:.8}
+.toast .b{display:flex;gap:6px;flex-wrap:wrap}
+.toast button{border:1px solid rgba(255,255,255,.25);background:transparent;color:inherit;border-radius:999px;padding:5px 12px;font-size:13px}
+:root[data-theme="dark"] .toast button{border-color:rgba(0,0,0,.25)}
+.toast button.main{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.backup{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.backup .btn{font-size:13px;padding:7px 14px}
+.status{font-size:12px;color:var(--muted);text-align:center}
+@keyframes pop{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.toast{animation:none}}
+
+/* ---- phone ---- */
+html{-webkit-text-size-adjust:100%}
+body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+button,.day,.seg label{touch-action:manipulation}
+.wrap{padding-top:calc(28px + env(safe-area-inset-top,0px));padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+.fab{display:none}
+.install{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:var(--r);background:var(--task-soft);color:var(--task);font-size:14px}
+.install .btn{background:var(--task);border-color:var(--task);color:var(--surface)}
+@media (max-width:560px){
+  body{font-size:16px}
+  .wrap{padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:calc(110px + env(safe-area-inset-bottom,0px));gap:16px}
+  header{align-items:center;flex-wrap:nowrap}
+  .brand h1{font-size:28px}
+  #addBtn{display:none}
+  #soundBtn span{display:none}
+  #soundBtn{width:44px;height:44px;padding:0;justify-content:center}
+  .summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .stat{padding:10px 12px}
+  .cal-head{padding:12px 12px 8px}
+  .cal-head h2{font-size:17px}
+  .icon-btn,.today-link{height:40px}.icon-btn{width:40px}
+  .dow{padding:0 6px}.days{padding:6px 6px 10px;gap:2px}
+  .legend{padding:0 12px 12px}
+  .sec{padding:14px}
+  .item{padding:12px;gap:12px}
+  .check{width:26px;height:26px}
+  .field input,.field select,.field textarea{font-size:16px;padding:12px}
+  .overlay{place-items:end center;padding:0}
+  .modal{width:100%;border-radius:20px 20px 0 0;max-height:92%;padding:20px 16px calc(20px + env(safe-area-inset-bottom,0px));animation:sheet .22s ease-out}
+  .modal::before{content:"";width:40px;height:4px;border-radius:2px;background:var(--line);align-self:center;margin:-8px 0 2px}
+  .modal-foot .btn{padding:12px 18px}
+  .fab{display:grid;place-items:center;position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));width:60px;height:60px;border-radius:20px;border:0;background:var(--accent);color:var(--accent-ink);box-shadow:0 10px 30px rgba(179,40,59,.35);z-index:15}
+  .fab svg{width:26px;height:26px}
+  .toasts{right:14px;left:14px;width:auto;bottom:calc(92px + env(safe-area-inset-bottom,0px))}
+}
+@keyframes sheet{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.modal{animation:none}}
+@media (display-mode:standalone){.install{display:none!important}}
+
+html,body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <small id="todayLabel">Bu gün</small>
+      <h1>Gündəm<span>.</span></h1>
+    </div>
+    <div class="actions">
+      <button class="btn" id="soundBtn" aria-pressed="false" title="Xatırlatma gələndə səs çalınsın">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span>Səsli xatırlatma</span>
+      </button>
+      <button class="btn primary" id="addBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Yeni qeyd
+      </button>
+    </div>
+  </header>
+
+  <div class="summary" id="summary"></div>
+  <div id="install" class="install" hidden></div>
+  <div id="notice"></div>
+
+  <div class="grid">
+    <section class="panel" aria-label="Təqvim">
+      <div class="cal-head">
+        <h2 id="monthTitle"></h2>
+        <div class="nav">
+          <button class="today-link" id="goToday">Bu gün</button>
+          <button class="icon-btn" id="prevM" aria-label="Əvvəlki ay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <button class="icon-btn" id="nextM" aria-label="Növbəti ay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+        </div>
+      </div>
+      <div class="dow"><span>B.e</span><span>Ç.a</span><span>Ç</span><span>C.a</span><span>C</span><span>Ş</span><span>B</span></div>
+      <div class="days" id="days"></div>
+      <div class="legend">
+        <span><i style="background:var(--task)"></i>Tapşırıq</span>
+        <span><i style="background:var(--event)"></i>Tədbir</span>
+        <span><i style="background:var(--dead)"></i>Son tarix</span>
+      </div>
+    </section>
+
+    <div class="side">
+      <section class="panel sec" id="overdueSec" hidden>
+        <div class="sec-head"><h3>Gecikənlər</h3><span class="sub" id="overdueCount"></span></div>
+        <ul class="list" id="overdueList"></ul>
+      </section>
+      <section class="panel sec">
+        <div class="sec-head"><h3 id="dayTitle"></h3><span class="sub" id="dayCount"></span></div>
+        <ul class="list" id="dayList"></ul>
+      </section>
+      <section class="panel sec">
+        <div class="sec-head"><h3>Yaxınlaşanlar</h3><span class="sub">14 gün</span></div>
+        <div id="upList"></div>
+      </section>
+      <div class="status" id="status"></div>
+      <div class="backup"><button class="btn ghost" id="exportBtn" type="button">Yedəklə (.json)</button><button class="btn ghost" id="importBtn" type="button">Yedəkdən bərpa et</button><input type="file" id="importFile" accept="application/json,.json" hidden></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <form class="modal" id="form" novalidate>
+    <h2 id="formTitle">Yeni qeyd</h2>
+    <div class="field">
+      <label for="fTitle">Nə etməlisən?</label>
+      <input id="fTitle" maxlength="140" placeholder="Məs: Python dərsinə hazırlıq" autocomplete="off">
+    </div>
+    <div class="field">
+      <span class="lbl">Növ</span>
+      <div class="seg">
+        <input type="radio" name="type" id="tTask" value="task" checked><label for="tTask">Tapşırıq</label>
+        <input type="radio" name="type" id="tEvent" value="event"><label for="tEvent">Tədbir</label>
+        <input type="radio" name="type" id="tDead" value="deadline"><label for="tDead">Son tarix</label>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="fDate">Tarix</label><input type="date" id="fDate"></div>
+      <div class="field"><label for="fTime">Saat (istəyə görə)</label><input type="time" id="fTime"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="fRepeat">Təkrar</label>
+        <select id="fRepeat">
+          <option value="none">Təkrarlanmır</option>
+          <option value="daily">Hər gün</option>
+          <option value="weekdays">İş günləri (B.e–C)</option>
+          <option value="weekly">Hər həftə</option>
+        </select>
+      </div>
+      <div class="field"><label for="fRemind">Xatırlat</label>
+        <select id="fRemind">
+          <option value="-1">Xatırlatma yox</option>
+          <option value="0">Vaxtı çatanda</option>
+          <option value="10">10 dəq əvvəl</option>
+          <option value="30" selected>30 dəq əvvəl</option>
+          <option value="60">1 saat əvvəl</option>
+          <option value="1440">1 gün əvvəl</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label for="fNote">Qeyd</label><textarea id="fNote" maxlength="1000" placeholder="Link, yer, detallar…"></textarea></div>
+    <div class="err" id="fErr"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn danger" id="delBtn" hidden>Sil</button>
+      <div class="r">
+        <button type="button" class="btn ghost" id="cancelBtn">Ləğv et</button>
+        <button type="submit" class="btn primary">Yadda saxla</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<button class="fab" id="fab" type="button" aria-label="Yeni qeyd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+(function(){
+const MONTHS=["Yanvar","Fevral","Mart","Aprel","May","İyun","İyul","Avqust","Sentyabr","Oktyabr","Noyabr","Dekabr"];
+const MONTHS_GEN=["yanvar","fevral","mart","aprel","may","iyun","iyul","avqust","sentyabr","oktyabr","noyabr","dekabr"];
+const DAYS=["Bazar","Bazar ertəsi","Çərşənbə axşamı","Çərşənbə","Cümə axşamı","Cümə","Şənbə"];
+const TYPE_LBL={task:"Tapşırıq",event:"Tədbir",deadline:"Son tarix"};
+const REP_LBL={daily:"hər gün",weekdays:"iş günləri",weekly:"hər həftə"};
+const $=id=>document.getElementById(id);
+const LS="gundem.items.v1", LSN="gundem.notified.v1", LSS="gundem.sound";
+
+function ls(get,key,val){try{if(get)return JSON.parse(localStorage.getItem(key)||"null");localStorage.setItem(key,JSON.stringify(val))}catch(e){return null}}
+const pad=n=>String(n).padStart(2,"0");
+const keyOf=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const parse=k=>{const[y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d)};
+const addDays=(k,n)=>{const d=parse(k);d.setDate(d.getDate()+n);return keyOf(d)};
+const todayKey=()=>keyOf(new Date());
+const nice=k=>{const d=parse(k);return d.getDate()+" "+MONTHS_GEN[d.getMonth()]};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+
+let items=ls(true,LS)||[];
+let notified=ls(true,LSN)||{};
+let sel=todayKey();
+let view=(()=>{const d=new Date();return {y:d.getFullYear(),m:d.getMonth()}})();
+let sound=!!ls(true,LSS);
+
+/* ---------- logic ---------- */
+function occursOn(it,k){
+  if(k<it.date) return false;
+  const dw=parse(k).getDay();
+  switch(it.repeat){
+    case "daily": return true;
+    case "weekdays": return dw>=1&&dw<=5;
+    case "weekly": return dw===parse(it.date).getDay();
+    default: return k===it.date;
+  }
+}
+const isDone=(it,k)=>(!it.repeat||it.repeat==="none")?!!it.done:(it.doneDates||[]).includes(k);
+const byTime=(a,b)=>(a.time||"").localeCompare(b.time||"")||a.title.localeCompare(b.title);
+const on=k=>items.filter(it=>occursOn(it,k)).sort(byTime);
+function at(it,k){const d=parse(k);const[h,m]=(it.time||"09:00").split(":").map(Number);d.setHours(h,m,0,0);return d.getTime()}
+function overdue(){
+  const t=todayKey(),now=Date.now();
+  return items.filter(it=>(!it.repeat||it.repeat==="none")&&!it.done&&(it.date<t||(it.date===t&&it.time&&at(it,t)<now))).sort((a,b)=>a.date.localeCompare(b.date)||byTime(a,b));
+}
+function rel(ms){
+  const a=Math.abs(ms),m=Math.round(a/60000),fut=ms>0;
+  if(m<1) return "indi";
+  let s; if(m<60) s=m+" dəq"; else if(m<1440) s=Math.round(m/60)+" saat"; else s=Math.round(m/1440)+" gün";
+  return s+(fut?" sonra":" əvvəl");
+}
+
+/* ---------- storage ---------- */
+function persistLocal(){ls(false,LS,items)}
+function save(it){
+  const i=items.findIndex(x=>x.id===it.id);
+  if(i>=0) items[i]=it; else items.push(it);
+  persistLocal(); render();
+}
+function removeItem(id){items=items.filter(x=>x.id!==id); persistLocal(); render();}
+function showStatus(t){$("status").textContent=t}
+function connect(){showStatus("Qeydlər bu brauzerdə saxlanır. Başqa cihaza keçmək üçün yedəklə.");return Promise.resolve()}
+
+/* ---------- backup ---------- */
+$("exportBtn").onclick=()=>{
+  const blob=new Blob([JSON.stringify({app:"gundem",v:1,items},null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="gundem-"+todayKey()+".json";
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+};
+$("importBtn").onclick=()=>$("importFile").click();
+$("importFile").onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);const list=Array.isArray(d)?d:d.items;
+    if(!Array.isArray(list)) throw 0;
+    const map=new Map(items.map(i=>[i.id,i]));
+    list.filter(i=>i&&i.id&&i.title&&i.date).forEach(i=>map.set(i.id,i));
+    items=[...map.values()];persistLocal();render();showStatus(list.length+" qeyd bərpa olundu.");
+  }catch(err){showStatus("Fayl oxunmadı: Gündəm-dən yedəklənmiş .json faylı seç.")}};
+  r.readAsText(f); e.target.value="";
+};
+
+/* ---------- render ---------- */
+function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+const CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+
+function itemRow(it,k,opts={}){
+  const li=el("li","item "+it.type+(isDone(it,k)?" is-done":""));
+  const c=el("button","check"); c.type="button"; c.innerHTML=CHECK;
+  c.setAttribute("aria-label",(isDone(it,k)?"Tamamlanmayıb kimi işarələ: ":"Tamamlandı: ")+it.title);
+  c.onclick=()=>toggle(it,k);
+  const b=el("div","body"); b.tabIndex=0; b.setAttribute("role","button");
+  b.onclick=()=>openForm(it); b.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openForm(it)}};
+  b.appendChild(el("div","ttl",it.title));
+  const m=el("div","meta");
+  m.appendChild(el("span","tag "+it.type,TYPE_LBL[it.type]));
+  if(it.sample) m.appendChild(el("span","tag sample","Nümunə"));
+  if(it.time) m.appendChild(el("span","t",it.time)); else m.appendChild(el("span",null,"bütün gün"));
+  if(it.repeat&&it.repeat!=="none") m.appendChild(el("span",null,"↻ "+REP_LBL[it.repeat]));
+  if(it.note) m.appendChild(el("span",null,it.note.length>40?it.note.slice(0,40)+"…":it.note));
+  b.appendChild(m);
+  li.append(c,b);
+  if(opts.when){const w=el("div","when"+(opts.late?" late":""),opts.when);li.appendChild(w)} else li.appendChild(el("span"));
+  return li;
+}
+function toggle(it,k){
+  const n=JSON.parse(JSON.stringify(it));
+  if(!n.repeat||n.repeat==="none") n.done=!n.done;
+  else{const s=new Set(n.doneDates||[]); s.has(k)?s.delete(k):s.add(k);
+    // keep only the last 60 days of ticks
+    const cut=addDays(todayKey(),-60); n.doneDates=[...s].filter(x=>x>=cut).sort();}
+  save(n);
+}
+
+function render(){
+  const t=todayKey(), td=new Date();
+  $("todayLabel").textContent=DAYS[td.getDay()]+", "+nice(t)+" "+td.getFullYear();
+
+  // summary
+  const todays=on(t), left=todays.filter(it=>!isDone(it,t)).length, od=overdue();
+  let week=0; for(let i=1;i<=7;i++) week+=on(addDays(t,i)).length;
+  const S=$("summary"); S.innerHTML="";
+  const stat=(n,l,cls)=>{const s=el("div","stat"+(cls?" "+cls:""));s.appendChild(el("b",null,n));s.appendChild(document.createTextNode(l));S.appendChild(s)};
+  stat(left," bu gün qalıb");
+  stat(todays.length-left," bu gün bitib");
+  stat(week," növbəti 7 gündə");
+  if(od.length) stat(od.length," gecikən","alert");
+
+  // notice
+  const N=$("notice"); N.innerHTML="";
+  const hasSample=items.some(i=>i.sample);
+  if(!items.length){
+    const d=el("div","notice"); d.appendChild(el("span",null,"Hələ qeyd yoxdur. Təqvimdə günə toxun, ya da necə göründüyünə baxmaq üçün nümunələri əlavə et."));
+    const b=el("button","btn","Nümunələri göstər"); b.onclick=addSamples; d.appendChild(b); N.appendChild(d);
+  } else if(hasSample){
+    const d=el("div","notice"); d.appendChild(el("span",null,"“Nümunə” işarəli qeydlər sadəcə göstəriş üçündür."));
+    const b=el("button","btn","Nümunələri sil"); b.onclick=()=>items.filter(i=>i.sample).forEach(i=>removeItem(i.id)); d.appendChild(b); N.appendChild(d);
+  }
+
+  // calendar
+  $("monthTitle").innerHTML=""; $("monthTitle").append(MONTHS[view.m]+" ",Object.assign(el("em",null,String(view.y))));
+  const D=$("days"); D.innerHTML="";
+  const first=new Date(view.y,view.m,1), off=(first.getDay()+6)%7;
+  const start=new Date(view.y,view.m,1-off);
+  const rows=Math.ceil((off+new Date(view.y,view.m+1,0).getDate())/7);
+  for(let i=0;i<rows*7;i++){
+    const d=new Date(start); d.setDate(start.getDate()+i); const k=keyOf(d);
+    const its=on(k);
+    const c=el("button","day"+(d.getMonth()!==view.m?" out":"")+(k===t?" today":"")+(k===sel?" sel":""));
+    c.type="button";
+    c.setAttribute("aria-label",d.getDate()+" "+MONTHS_GEN[d.getMonth()]+(its.length?", "+its.length+" qeyd":""));
+    c.appendChild(el("span","n",d.getDate()));
+    const ch=el("div","chips"), dots=el("div","dots");
+    its.slice(0,3).forEach(it=>{ch.appendChild(el("span","chip "+it.type+(isDone(it,k)?" done":""),(it.time?it.time+" ":"")+it.title)); dots.appendChild(el("i",it.type))});
+    if(its.length>3) ch.appendChild(el("span","more","+"+(its.length-3)+" daha"));
+    c.append(ch,dots);
+    c.onclick=()=>{sel=k;render()};
+    c.ondblclick=()=>openForm(null,k);
+    D.appendChild(c);
+  }
+
+  // overdue
+  $("overdueSec").hidden=!od.length;
+  const OL=$("overdueList"); OL.innerHTML="";
+  $("overdueCount").textContent=od.length?od.length+" qeyd":"";
+  od.forEach(it=>OL.appendChild(itemRow(it,it.date,{when:it.date===t?it.time:nice(it.date),late:true})));
+
+  // selected day
+  const sd=parse(sel);
+  $("dayTitle").textContent=sel===t?"Bu gün":sel===addDays(t,1)?"Sabah":DAYS[sd.getDay()]+", "+nice(sel);
+  const dl=on(sel); $("dayCount").textContent=dl.length?dl.filter(i=>!isDone(i,sel)).length+" / "+dl.length:"";
+  const DL=$("dayList"); DL.innerHTML="";
+  if(!dl.length){
+    const e=el("li","empty"); e.appendChild(el("span",null,sel===t?"Bu gün üçün heç nə yoxdur.":"Bu gün üçün heç nə planlanmayıb."));
+    const b=el("button","btn","Qeyd əlavə et"); b.onclick=()=>openForm(null,sel); e.appendChild(b); DL.appendChild(e);
+  } else dl.forEach(it=>{
+    let w=null; if(sel===t&&it.time&&!isDone(it,sel)) w=rel(at(it,sel)-Date.now());
+    DL.appendChild(itemRow(it,sel,{when:w,late:w&&w.includes("əvvəl")}));
+  });
+
+  // upcoming
+  const U=$("upList"); U.innerHTML=""; let any=false;
+  for(let i=1;i<=14;i++){
+    const k=addDays(t,i), its=on(k).filter(it=>!isDone(it,k));
+    if(!its.length) continue; any=true;
+    U.appendChild(el("div","group-label",(i===1?"Sabah · ":"")+DAYS[parse(k).getDay()]+", "+nice(k)));
+    const ul=el("ul","list"); its.forEach(it=>ul.appendChild(itemRow(it,k,{when:i===1?"sabah":i+" gün"}))); U.appendChild(ul);
+  }
+  if(!any) U.appendChild(el("div","empty","Növbəti iki həftə boşdur."));
+}
+
+/* ---------- form ---------- */
+let editing=null;
+function openForm(it,k){
+  editing=it;
+  $("formTitle").textContent=it?"Qeydi dəyiş":"Yeni qeyd";
+  $("fTitle").value=it?it.title:"";
+  document.querySelector('input[name=type][value="'+(it?it.type:"task")+'"]').checked=true;
+  $("fDate").value=it?it.date:(k||sel);
+  $("fTime").value=it?it.time||"":"";
+  $("fRepeat").value=it?it.repeat||"none":"none";
+  $("fRemind").value=String(it?it.remind:30);
+  $("fNote").value=it?it.note||"":"";
+  $("fErr").textContent="";
+  $("delBtn").hidden=!it; $("delBtn").classList.remove("armed"); $("delBtn").textContent="Sil";
+  $("overlay").hidden=false; setTimeout(()=>$("fTitle").focus(),30);
+}
+function closeForm(){$("overlay").hidden=true;editing=null}
+$("form").addEventListener("submit",e=>{
+  e.preventDefault();
+  const title=$("fTitle").value.trim(), date=$("fDate").value;
+  if(!title){$("fErr").textContent="Başlıq yaz — nə etməli olduğunu.";$("fTitle").focus();return}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){$("fErr").textContent="Tarixi seç.";$("fDate").focus();return}
+  const it=Object.assign({},editing||{id:uid(),created:Date.now(),done:false,doneDates:[]},{
+    title,date,type:document.querySelector('input[name=type]:checked').value,
+    time:$("fTime").value||"",repeat:$("fRepeat").value,remind:Number($("fRemind").value),note:$("fNote").value.trim()
+  });
+  if(editing&&(editing.date!==it.date||editing.time!==it.time)) Object.keys(notified).forEach(x=>{if(x.startsWith(it.id+"|"))delete notified[x]});
+  delete it.sample;
+  ls(false,LSN,notified);
+  sel=date; const d=parse(date); view={y:d.getFullYear(),m:d.getMonth()};
+  save(it); closeForm();
+});
+$("delBtn").onclick=()=>{
+  const b=$("delBtn");
+  if(!b.classList.contains("armed")){b.classList.add("armed");b.textContent="Silinsin? Təsdiqlə";return}
+  removeItem(editing.id); closeForm();
+};
+$("cancelBtn").onclick=closeForm;
+$("overlay").addEventListener("click",e=>{if(e.target===$("overlay"))closeForm()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("overlay").hidden)closeForm()});
+$("addBtn").onclick=()=>openForm(null,sel);
+$("prevM").onclick=()=>{view.m--;if(view.m<0){view.m=11;view.y--}render()};
+$("nextM").onclick=()=>{view.m++;if(view.m>11){view.m=0;view.y++}render()};
+$("goToday").onclick=()=>{sel=todayKey();const d=new Date();view={y:d.getFullYear(),m:d.getMonth()};render()};
+
+/* ---------- samples ---------- */
+function addSamples(){
+  const t=todayKey();
+  [
+    {title:"Səhər planını nəzərdən keçir",type:"task",date:t,time:"08:30",repeat:"weekdays",remind:0},
+    {title:"Kursun hesabatını göndər",type:"deadline",date:addDays(t,2),time:"18:00",repeat:"none",remind:1440},
+    {title:"Komanda görüşü",type:"event",date:addDays(t,1),time:"15:00",repeat:"weekly",remind:30,note:"Zoom linki burada olacaq"},
+    {title:"Kitabdan 20 səhifə oxu",type:"task",date:t,time:"",repeat:"daily",remind:-1}
+  ].forEach(s=>save(Object.assign({id:uid(),created:Date.now(),done:false,doneDates:[],note:"",sample:true},s)));
+}
+
+/* ---------- reminders ---------- */
+let audio=null;
+function beep(){
+  if(!sound) return;
+  try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();
+    [0,.18].forEach((d,i)=>{const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=i?988:784;o.type="sine";
+      g.gain.setValueAtTime(0,audio.currentTime+d);g.gain.linearRampToValueAtTime(.15,audio.currentTime+d+.02);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+d+.35);
+      o.connect(g).connect(audio.destination);o.start(audio.currentTime+d);o.stop(audio.currentTime+d+.4)})}catch(e){}
+}
+$("soundBtn").setAttribute("aria-pressed",String(sound));
+$("soundBtn").onclick=()=>{sound=!sound;ls(false,LSS,sound);$("soundBtn").setAttribute("aria-pressed",String(sound));if(sound)beep()};
+
+const shown=new Set();
+function toast(it,k){
+  const key=it.id+"|"+k; if(shown.has(key)) return; shown.add(key);
+  const T=el("div","toast");
+  T.appendChild(el("div","k","Xatırlatma · "+TYPE_LBL[it.type]));
+  T.appendChild(el("div","h",it.title));
+  const when=at(it,k)-Date.now();
+  T.appendChild(el("div","w",(k===todayKey()?"bu gün":nice(k))+(it.time?" saat "+it.time:"")+" · "+rel(when)));
+  const B=el("div","b");
+  const done=el("button","main","Tamamlandı"), snooze=el("button",null,"10 dəq sonra"), close=el("button",null,"Bağla");
+  const kill=()=>{T.remove();shown.delete(key)};
+  done.onclick=()=>{const cur=items.find(x=>x.id===it.id);if(cur&&!isDone(cur,k))toggle(cur,k);kill()};
+  snooze.onclick=()=>{notified[key]=Date.now()+600000;ls(false,LSN,notified);kill()};
+  close.onclick=kill;
+  B.append(done,snooze,close); T.appendChild(B);
+  $("toasts").appendChild(T); beep();
+}
+function checkReminders(){
+  const now=Date.now(), t=todayKey();
+  [t,addDays(t,1)].forEach(k=>on(k).forEach(it=>{
+    if(it.remind==null||it.remind<0||isDone(it,k)) return;
+    const due=at(it,k), fire=due-it.remind*60000, key=it.id+"|"+k, n=notified[key];
+    if(now<fire||now>due+6*3600000) return;
+    if(n===true) return;
+    if(typeof n==="number"&&now<n) return;
+    notified[key]=true; ls(false,LSN,notified); toast(it,k);
+  }));
+  // tidy old notification marks
+  const cut=addDays(t,-3); let ch=false;
+  Object.keys(notified).forEach(x=>{if(x.split("|")[1]<cut){delete notified[x];ch=true}}); if(ch) ls(false,LSN,notified);
+}
+
+/* ---------- phone ---------- */
+$("fab").onclick=()=>openForm(null,sel);
+(function(){let x0=null,y0=null;const D=$("days");
+  D.addEventListener("touchstart",e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY},{passive:true});
+  D.addEventListener("touchend",e=>{if(x0==null)return;const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;x0=null;
+    if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5){(dx<0?$("nextM"):$("prevM")).click()}},{passive:true});
+})();
+(function(){
+  const box=$("install");
+  const standalone=window.matchMedia("(display-mode: standalone)").matches||navigator.standalone;
+  if(standalone||ls(true,"gundem.installHidden")) return;
+  const hide=()=>{box.hidden=true;ls(false,"gundem.installHidden",true)};
+  function show(text,btnText,action){
+    box.innerHTML="";box.appendChild(el("span",null,text));
+    const r=el("div");r.style.display="flex";r.style.gap="8px";
+    if(btnText){const b=el("button","btn",btnText);b.onclick=action;r.appendChild(b)}
+    const c=el("button","btn ghost","Bağla");c.style.color="inherit";c.onclick=hide;r.appendChild(c);
+    box.appendChild(r);box.hidden=false;
+  }
+  let deferred=null;
+  window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferred=e;
+    show("Gündəm-i telefonuna proqram kimi quraşdır.","Quraşdır",async()=>{deferred.prompt();await deferred.userChoice;deferred=null;hide()})});
+  window.addEventListener("appinstalled",hide);
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  if(ios) show("iPhone-da quraşdırmaq üçün Safari-də Paylaş düyməsinə, sonra “Ana ekrana əlavə et”-ə toxun.");
+})();
+if("serviceWorker" in navigator&&location.protocol!=="file:"){window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))}
+
+render();
+connect().then(()=>setTimeout(checkReminders,1500));
+setInterval(()=>{checkReminders();},20000);
+let lastDay=todayKey();
+setInterval(()=>{if(todayKey()!==lastDay){lastDay=todayKey();sel=lastDay}render()},60000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){render();checkReminders()}});
+})();
+</script>
+
+</body>
+</html>
